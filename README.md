@@ -1,20 +1,21 @@
-# Homecraft Retail lab script: build an e-commerce search app with Elastic ESRE and Google's GenAI
+# Homecraft Retail lab script:Elastic ESRE 와 Google GenAI를 이용한 전자상거래 검색 app 만들기
 
-This is the step-by-step guide for enablement hands-on labs, and refers to the search app code repo in its [Palm2 version](https://github.com/valerioarvizzigno/homecraft_vertex) and [Gemini version](https://github.com/valerioarvizzigno/homecraft_gemini). 
+이 문서는 핸즈온 실습을 위한 스텝바이스텝 가이드이며, 다음 repo에서 작성된 검색 app 을 참조하고 있습니다. [Palm2 version](https://github.com/valerioarvizzigno/homecraft_vertex) / [Gemini version](https://github.com/valerioarvizzigno/homecraft_gemini). 
 
 --- TESTED WITH ELASTIC CLOUD ELASTIC CLOUD 8.12 + ELAND 8.12 (and Elastic Cloud 8.8.1 + ELAND 8.3)   ---
 
 
-## Configuration steps
+## 사전 환경 설정
 
-1. **Your Elastic Cloud account**
+1. **Elastic Cloud Trial 신규 가입**
    
-   User your own Elastic environment or sign-up to a [free trial account](https://www.elastic.co/cloud/elasticsearch-service/signup) of Elastic (or alternatively subscribe via GCP MP)
+   Elastic Cloud 를 신규로 가입하여 [free trial account](https://www.elastic.co/cloud/elasticsearch-service/signup) 를 만듭니다
+   신규 계정 생성시 gmail 계정을 사용하시고, _HongKildong@gmail.com_ 일 경우 "_HongKildong_**+codecamp**_@gmail.com_" 으로 만듭니다
    
-2. **Setup your cluster**
-   
-   To setup your Elastic cluster for this lab:
-   - select a GCP region, Elastic version 8.12, Autoscaling set to "None"
+3. **클러스터 설정**
+
+   다음과 동일하게 Elastic 클러스터를 설정하세요:
+   - GCP region: "🇰🇷 Seoul (asia-northeast3)", Elastic 버전 8.12, Autoscaling "None" 
    - 1-zone 8GB (memory) Hot node (or 2-zone x 4GB)
    - 1-zone 4GB Machine Learning node
    - 1-zone 1GB Kibana node
@@ -24,20 +25,26 @@ This is the step-by-step guide for enablement hands-on labs, and refers to the s
    - Explore the Kibana console and the management console
   
    (If on the Elastic trial, you're not able to specify topology on the initial screen, so create the cluster as per suggested default and then go to "Edit My Deployment" in the left panel -> "Actions" menu -> "Edit deployment" and set it as the list before. Don't worry if some node size doesn't match exactly the previous, just max out everything)
-     
-  ![image](https://github.com/valerioarvizzigno/homecraft_vertex_lab/assets/122872322/0b3782f9-a045-416e-90ce-8c4aeba8badd)
+
+ <img width="646" alt="image" src="https://github.com/ByungjooChoi/homecraft_vertex_lab_kor/assets/48340524/b0e05462-e6c7-445d-9b7f-c34a94ae4c15">
+
+
+
   ![image](https://github.com/valerioarvizzigno/homecraft_vertex_lab/assets/122872322/7e11519d-1b73-4f19-93b2-bd7f166a72ca)
 
 
 
-3. **Configuring Machine Learning nodes**
-   
-   As a first step we need to prepare our Elastic ML nodes to create text-embedding out of content we will be indexing. We just need to load our transformer model of choice into Elastic and start it. This can be done through the [Eland Client](https://github.com/elastic/eland). We will use the [all-distillroberta-v1](https://huggingface.co/sentence-transformers/all-distilroberta-v1) ML model. To run Eland client you need docker installed. An easy way to accomplish this step without python/docker installation is via Google's Cloud Shell. Be sure the eland version you're cloning is compatible with the Elastic version you choose (e.g. generally eland 8.12 works with elastic cloud 8.12)! If you used the latest Elastic version, there's generally no need to specify the Eland release version while cloning.
-   - On Kibana (left panel) --> Stack Management --> Security --> Users create a new user with "superuser" role attached
-   - Enter Google Cloud console
-   - Open the Cloud Shell editor (you can use [this link](https://console.cloud.google.com/cloudshelleditor?cloudshell=true))
-   - Enter the following commands. Take a look at the last one: you have to specify your Elastic username and password previously created (remove < >) + the elastic endpoint (find it at Elatic admin home -> "Manage" button on your deployment --> "Copy endpoint" on the Elasticsearch line)
-  
+3. **머신러닝 노드 설정**
+
+첫 번째 단계로, 색인할 콘텐츠에서 텍스트 임베딩을 생성하기 위해 Elastic ML 노드를 준비해야 합니다. 선택한 트랜스포머 모델을 Elastic에 로드하고 시작하기만 하면 됩니다. 이 작업은 [Eland Client](https://github.com/elastic/eland)를 통해 수행할 수 있습니다. 여기서는 [all-distillroberta-v1](https://huggingface.co/sentence-transformers/all-distilroberta-v1) ML 모델을 사용합니다. 이랜드 클라이언트를 실행하려면 도커가 설치되어 있어야 합니다. 파이썬/도커 설치 없이 이 단계를 쉽게 수행할 수 있는 방법은 구글의 클라우드 셸을 이용하는 것입니다. 복제하려는 eland 버전이 선택한 Elastic 버전과 호환되는지 확인하세요(예: 일반적으로 eland 8.12는 elastic Cloud 8.12와 정상 동작함)! 최신 Elastic 버전을 사용하는 경우, 일반적으로 복제하는 동안 Eland 릴리즈 버전을 지정할 필요가 없습니다.
+   - On Kibana (left panel) --> Stack Management --> Security --> Users 메뉴에서 "elastic" 계정을 만들고 "superuser" role 을 붙이세요
+     <img width="1102" alt="image" src="https://github.com/ByungjooChoi/homecraft_vertex_lab_kor/assets/48340524/94dd722e-5c7f-4f77-8487-046cba2927e6">
+
+   - Google Cloud 콘솔로 들어가세요
+   - Cloud Shell 에디터를 엽니다 (링크 클릭 [this link](https://console.cloud.google.com/cloudshelleditor?cloudshell=true))
+   - 다음 명령을 입력하세요. 마지막 라인 user 생성시 password 를 임의로 변경한 경우 반드시 변경한 password 로 바꾸시고, 자신의 the elastic endpoint로 변경합니다(< > 표시도 삭제)
+   - 패스워드에 ! 나 @ 등 특수문자가 있을 경우에 \ 로 escape 처리합니다
+
  ```bash
 git clone https://github.com/elastic/eland.git #use -b vX.X.X option for specific eland version.
 
@@ -45,13 +52,21 @@ cd eland/
 
 docker build -t elastic/eland .
 
-docker run -it --rm elastic/eland eland_import_hub_model --url https://<elastic_user>:<elastic_password>@<your_elastic_endpoint>:9243/ --hub-model-id sentence-transformers/all-distilroberta-v1 --start
+docker run -it --rm elastic/eland eland_import_hub_model --url https://elastic:_codecamp_@<your_elastic_endpoint>:9243/ --hub-model-id sentence-transformers/all-distilroberta-v1 --start
  ```
 
-4. **Check and test your ML model**
+   - Elatic admin home -> "Manage this deployment" 버튼을 클릭하여 Elasticsearch 의 "Copy endpoint" 를 클릭하면 자신의 endpoint 주소를 클립보드로 카피할 수 있습니다
+   <img width="318" alt="image" src="https://github.com/ByungjooChoi/homecraft_vertex_lab_kor/assets/48340524/ff40e81a-1399-458d-9b5b-f5a087b8cf85">
+   <img width="614" alt="image" src="https://github.com/ByungjooChoi/homecraft_vertex_lab_kor/assets/48340524/1bc3e1ee-04dd-43a6-85c6-7d76cb14c9a8">
 
-   After the model finishes loading into Elastic, enter your deployment and from the left menu go to "Stack Management" -> "Machine Learning". You should notice the all-distilroberta-v1 model listed and in the "started" status. If a "out of sync" warning is shown, click on it and sync. Everything should be now set. Our ML model is up-and-running. We now are able to apply our transformer model to the documents we are going to ingest. If you want, you can test it from the same page, clicking on three-dots menu on the right side of the model name and selecting "Test model".
 
+  
+
+
+4. **ML model 확인 및 테스트**
+
+모델이 Elastic에 로드가 완료되면 배포를 입력하고 왼쪽 메뉴에서 "Stack Management" -> "Machine Learning"으로 이동합니다. all-distilroberta-v1 모델이 보이고 "started" 상태인 것을 확인하실 수 있습니다. "out of sync" 경고가 표시되면 해당 경고를 클릭하고 동기화합니다. 이제 모든 것이 설정되었습니다. ML 모델이 실행 중입니다. 이제 수집할 문서에 트랜스포머 모델을 적용할 수 있습니다. 원하는 경우 같은 페이지에서 모델 이름 오른쪽에 있는 점 3개 메뉴를 클릭하고 "Test model"을 선택하여 테스트할 수 있습니다.
+   
    
 5. **Ingest Part 1: The Web Crawler**
    
