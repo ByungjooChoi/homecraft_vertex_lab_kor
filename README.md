@@ -278,8 +278,7 @@ genAI 모델이 어떻게 사용되는지, 그리고 VertexAI 및 Gemini Pro 모
 
 소스 코드를 간략하게 설명하겠습니다:
 
-- 첫 번째 줄은 필요한 라이브러리를 가져오는 것입니다. 앱 구조를 위한 "streamlit", API 호출과 Elastic 클러스터와의 연결을 추상화하기 위한 "elasticsearch", 그리고 모든 GenAI 모델 및 도구와 상호 작용하기 위한 Google의 SDK인 "vertexAI"를 가져오는 것입니다. 앞서 살펴본 바와 같이, 우리 앱이 VertexAI API를 호출할 수 있도록 하기 위해 Google 서비스에 대한 프로그래밍 방식의 액세스를 위해 머신을 인증해야 합니다.
-- The first lines will be importing the requried libraries. "streamlit" for the app structure, "elasticsearch" for abstracting the API calls and connections with the Elastic cluster, and "vertexAI", the Google's SDK for interacting with all the GenAI models and tools. As previously seen, we had to authenticate our machine for programmatic access to Google services to let our app call VertexAI APIs.
+- 첫 번째 줄은 필요한 라이브러리를 가져오는 것입니다. 앱 구조를 위한 "streamlit", API 호출과 Elastic 클러스터와의 연결을 추상화하기 위한 "elasticsearch", 그리고 모든 GenAI 모델 및 도구와 상호 작용하기 위한 Google의 SDK인 "vertexAI"를 가져오는 것입니다. 앞서 살펴본 바와 같이, 앱이 VertexAI API를 호출할 수 있도록 하기 위해 Google 서비스에 대한 프로그래밍 방식의 액세스를 위해 머신을 인증해야 합니다.
 
 ```bash
 import os
@@ -300,7 +299,7 @@ cp = os.environ['cloud_pass']
 cu = os.environ['cloud_user']
 ```
 
-- 다음 설정으로 GenAI 모델을 구성합니다. 사용할 모델, 모델의 창의성 및 출력 길이를 정의하고 SDK를 초기화합니다.
+- 다음 설정으로 GenAI 모델을 구성합니다. 사용할 모델, 모델의 creativity 및 출력 길이를 정의하고 SDK를 초기화합니다.
 - With the following settings we are configuring our GenAI model. We define which model we want to use, model's creativity and output lenght and we initialize the sdk.
 
 ```bash
@@ -316,10 +315,10 @@ model = GenerativeModel("gemini-pro")
 visionModel = GenerativeModel("gemini-1.0-pro-vision-001")
 ```
 
-- line 50 부터 line 185 까지는 Elastic 클러스터와의 연결을 설정하고 세 가지 주요 API 호출을 실행하는 메서드를 정의합니다. 
-a. search_products: 시맨틱 검색을 사용하여 HomeDepot 데이터 세트에서 제품 찾기
-b. search_docs: 시맨틱 검색을 사용하여 Ikea 웹 크롤링 인덱스에서 일반 소매 정보 찾기
-c. search_orders: 키워드 검색으로 과거 사용자 주문 검색하기
+- line 50 부터 line 185 까지는 Elastic 클러스터와의 연결을 설정하고 세 가지 주요 API 호출을 실행하는 메서드를 정의합니다.
+   - search_products: 시맨틱 검색을 사용하여 HomeDepot 데이터 세트에서 제품 찾기
+   - search_docs: 시맨틱 검색을 사용하여 Ikea 웹 크롤링 인덱스에서 일반 소매 정보 찾기
+   - search_orders: 키워드 검색으로 과거 사용자 주문 검색하기
 
 - 진짜 마법은 다음 코드에서 일어납니다. 여기서는 웹 양식에서 사용자 입력을 캡처하고, Elastic에서 검색 쿼리를 실행하고, 응답을 사용하여 미리 정의된 프롬프트에 변수를 채워 GenAI 모델에 전송되도록 합니다.
 
@@ -361,27 +360,27 @@ if submit_button:
 하기 질문으로 테스트 해보세요: 
 
 - "List the 3 top paint primers in the product catalog, specify also the sales price for each product and product key features. Then explain in bullet points how to use a paint primer".
-You can also try asking for related urls and availability --> leveraging private product catalog + public knowledge
+You can also try asking for related urls and availability --> 비공개 제품 카탈로그와 공개된 지식 결합
 
-- "could you please list the available stores in UK" --> --> it will likely use (crawled docs)
+- "could you please list the available stores in UK" --> --> crawled docs 사용 가능성 높음 
 
-- "Which are the ways to contact customer support in the UK? What is the webpage url for customer support?" --> it will likely use crawled docs
+- "Which are the ways to contact customer support in the UK? What is the webpage url for customer support?" --> crawled docs 사용 가능성 높음
 
-- Please provide the social media accounts info from the company --> it will likely use crawled docs
+- Please provide the social media accounts info from the company --> crawled docs 사용 가능성 높음
 
-- Please provide the full address of the Manchester store in UK --> it will likely use crawled docs
+- Please provide the full address of the Manchester store in UK --> crawled docs 사용 가능성 높음
 
-- are you offering a free parcel delivery? --> it will likely use crawled docs
+- are you offering a free parcel delivery? --> crawled docs 사용 가능성 높음
 
-- Could you please list my past orders? Please specify price for each product --> it will search into BigQuery order dataset
+- Could you please list my past orders? Please specify price for each product --> BigQuery 주문 dataset 으로 검색 
   
-- After uploading the image (find some in the samples/images folder) try queries like this one:
+- Which product are available in the product catalog for the Bathroom category? Give a short description of each product
 
 - List all the items I have bought in my order history in bullet points
 
 
 ### Following questions are for multimodal Gemini
 
-After uploading the image (find some in the samples/images folder) try queries like this one:
+samples/images 폴더의 image 를 upload 한 후 다음과 같이 query 해보세요 
 
 - What's in the image? Do you have similar products in your catalog? If yes list them with descriptions and prices
