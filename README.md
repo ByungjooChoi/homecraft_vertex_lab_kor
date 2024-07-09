@@ -1,6 +1,6 @@
 # Homecraft Retail lab script:Elastic ESRE 와 Google GenAI를 이용한 전자상거래 검색 app 만들기
 
-이 문서는 핸즈온 실습을 위한 스텝바이스텝 가이드이며, 다음 repo에서 작성된 검색 app 을 참조하고 있습니다. [Palm2 version](https://github.com/valerioarvizzigno/homecraft_vertex) / [Gemini version](https://github.com/valerioarvizzigno/homecraft_gemini). 
+이 문서는 핸즈온 실습을 위한 스텝바이스텝 가이드이며, 다음 repo에서 작성된 검색 app 을 참조하고 있습니다.[Gemini version](https://github.com/valerioarvizzigno/homecraft_gemini). 
 
 --- TESTED WITH ELASTIC CLOUD ELASTIC CLOUD 8.12 + ELAND 8.12 (and Elastic Cloud 8.8.1 + ELAND 8.3)   ---
 
@@ -242,7 +242,7 @@ git clone https://github.com/valerioarvizzigno/homecraft_gemini.git
      Install requirements needed to run the app from the requirements.txt file. After this step, close the SSH session and reopen it, to ensure all the $PATH variables are refreshed (otherwise you can get a "streamlit command not found" error). You can have a look at the requirements.txt file content via vim/nano or your favourite editor.
 
 ```bash
-cd homecraft_vertex
+cd homecraft_gemini
 pip install -r requirements.txt
 
 ```
