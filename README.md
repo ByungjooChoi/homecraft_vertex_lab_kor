@@ -52,7 +52,7 @@ cd eland/
 
 docker build -t elastic/eland .
 
-docker run -it --rm elastic/eland eland_import_hub_model --url https://elastic:_codecamp_@<your_elastic_endpoint>:9243/ --hub-model-id sentence-transformers/all-distilroberta-v1 --start
+docker run -it --rm elastic/eland eland_import_hub_model --url https://elastic:<codecamp>@<your_elastic_endpoint>:9243/ --hub-model-id sentence-transformers/all-distilroberta-v1 --start
  ```
 
    - Elatic admin home -> "Manage this deployment" 버튼을 클릭하여 Elasticsearch 의 "Copy endpoint" 를 클릭하면 자신의 endpoint 주소를 클립보드로 카피할 수 있습니다
