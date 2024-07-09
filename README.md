@@ -192,7 +192,7 @@ POST _reindex
        - The job's name
        - The region to run the job in (preferably choose the same you deployed the Elastic cluster in to minimize latencies and costs)
        - The Elastic cluster's "cloudID"
-       - The Elastic API key to let Dataflow connect with Elastic(check [here](https://www.elastic.co/guide/en/cloud/current/ec-api-keys.html) how to generate one)
+       - The Elastic API key to let Dataflow connect with Elastic(check [here](https://www.elastic.co/guide/en/kibana/current/api-keys.html) how to generate one)
        - The index name as "bigquery-thelook-order-items". Dataflow will automatically create this new index where all the table lines will be sent.
        - The dataset and table you want to read from (first field of the Optional Parameters): bigquery-public-data.thelook_ecommerce.order_items (some regions need bigquery-public-data:thelook_ecommerce.order_items instead - : after project name instead of .)
        - Elastic username and password
@@ -231,10 +231,10 @@ sudo apt install python3
 
 ```
 
-16. Clone the [homecraft_vertex source-code repo](https://github.com/valerioarvizzigno/homecraft_vertex) on your CE machine.
+16. Clone the [homecraft_gemini source-code repo](https://github.com/valerioarvizzigno/homecraft_gemini) on your CE machine.
 
 ```bash
-git clone https://github.com/valerioarvizzigno/homecraft_vertex.git
+git clone https://github.com/valerioarvizzigno/homecraft_gemini.git
 ```
 
 17. **Configure VertexAI and Elasticsearch SDKs**
@@ -270,26 +270,28 @@ streamlit run homecraft_home.py
 
 21. Test your app!
 
-## Web-app code explanation
+## Web-app code 설명
 
-To fully understand how genAI models are used and how to integrate with VertexAI and PALM2 models have a look at the web-app code.
-The application is built with a easy-to-start python framework called "streamlit", it allows simple and fast front-end development for prototyping and demos.
+genAI 모델이 어떻게 사용되는지, 그리고 VertexAI 및 Gemini Pro 모델과 통합하는 방법을 완전히 이해하려면 웹 앱 코드를 살펴보세요. 이 애플리케이션은 "streamlit" 파이썬 프레임워크로 구축되어 프로토타이핑과 데모를 위한 간단하고 빠른 프론트엔드 개발이 가능합니다
 
-Most of the code is in the "homecraft_home.py" file, that we have referenced in the "run" command to startup the application. Additional pages can be found in the "pages" folder, which routing is automatically managed by streamlit. In the "homecraft_finetuned.py" page you can find the code to call a custom fine-tuned version of text-bison-001, re-trained via VertexAI. For more information about fine-tuning check [here](https://cloud.google.com/vertex-ai/docs/generative-ai/models/tune-models#generative-ai-tune-model-python).
+대부분의 코드는 애플리케이션을 시작하기 위해 "run" command에서 참조한 "homecraft_home.py" 파일에 있습니다. 추가 페이지는 "pages" 폴더에서 찾을 수 있으며, 이 폴더의 라우팅은 streamlit 에서 자동으로 관리합니다
 
-Let's briefly describe the source code:
+소스 코드를 간략하게 설명하겠습니다:
 
+- 첫 번째 줄은 필요한 라이브러리를 가져오는 것입니다. 앱 구조를 위한 "streamlit", API 호출과 Elastic 클러스터와의 연결을 추상화하기 위한 "elasticsearch", 그리고 모든 GenAI 모델 및 도구와 상호 작용하기 위한 Google의 SDK인 "vertexAI"를 가져오는 것입니다. 앞서 살펴본 바와 같이, 우리 앱이 VertexAI API를 호출할 수 있도록 하기 위해 Google 서비스에 대한 프로그래밍 방식의 액세스를 위해 머신을 인증해야 합니다.
 - The first lines will be importing the requried libraries. "streamlit" for the app structure, "elasticsearch" for abstracting the API calls and connections with the Elastic cluster, and "vertexAI", the Google's SDK for interacting with all the GenAI models and tools. As previously seen, we had to authenticate our machine for programmatic access to Google services to let our app call VertexAI APIs.
 
 ```bash
 import os
+import pandas as pd
+from io import StringIO
 import streamlit as st
 from elasticsearch import Elasticsearch
 import vertexai
-from vertexai.language_models import TextGenerationModel
+from vertexai.preview.generative_models import GenerativeModel, ChatSession, GenerationConfig, Image, Part
 ```
 
-- We then set internal variables reading the environment ones we previously defined for the credentials/endpoints of Elastic and GCP project. Those will be used to setup the connections later.
+- 다음으로 Elastic과 GCP 프로젝트의 자격 증명/엔드포인트에 대해 이전에 정의한 환경 변수를 읽는 내부 변수를 설정합니다. 이러한 변수는 나중에 연결을 설정하는 데 사용됩니다.
 
 ```bash
 projid = os.environ['gcp_project_id']
@@ -298,48 +300,65 @@ cp = os.environ['cloud_pass']
 cu = os.environ['cloud_user']
 ```
 
+- 다음 설정으로 GenAI 모델을 구성합니다. 사용할 모델, 모델의 창의성 및 출력 길이를 정의하고 SDK를 초기화합니다.
 - With the following settings we are configuring our GenAI model. We define which model we want to use, model's creativity and output lenght and we initialize the sdk.
 
 ```bash
-parameters = {
-    "temperature": 0.4, # 0 - 1. The higher the temp the more creative and less on point answers become
-    "max_output_tokens": 606, #modify this number (1 - 1024) for short/longer answers
-    "top_p": 0.8,
-    "top_k": 40
-}
+generation_config = GenerationConfig(
+    temperature=0.4, # 0 - 1. The higher the temp the more creative and less on point answers become
+    max_output_tokens=2048, #modify this number (1 - 1024) for short/longer answers
+    top_p=0.8,
+    top_k=40,
+    candidate_count=1,
+)
 vertexai.init(project=projid, location="us-central1")
-model = TextGenerationModel.from_pretrained("text-bison@001")
+model = GenerativeModel("gemini-pro")
+visionModel = GenerativeModel("gemini-1.0-pro-vision-001")
 ```
 
-- From line 37 to 172 we set the connection with the Elastic cluster and define methods executing three main API calls: 
-a. search_products: use semantic search to find products in the HomeDepot dataset;
-b. search_docs: use semantic search to find general retail information from the Ikea web-crawled index;
-c. search_orders: search past user orders by keyword search.
+- line 50 부터 line 185 까지는 Elastic 클러스터와의 연결을 설정하고 세 가지 주요 API 호출을 실행하는 메서드를 정의합니다. 
+a. search_products: 시맨틱 검색을 사용하여 HomeDepot 데이터 세트에서 제품 찾기
+b. search_docs: 시맨틱 검색을 사용하여 Ikea 웹 크롤링 인덱스에서 일반 소매 정보 찾기
+c. search_orders: 키워드 검색으로 과거 사용자 주문 검색하기
 
-- The real magic happens in the following code. Here we capture the user input from the web form, we execute search queries on Elastic and the use the responses to fill the variables into the pre-defined prompt, meant to be sent to our GenAI model.
+- 진짜 마법은 다음 코드에서 일어납니다. 여기서는 웹 양식에서 사용자 입력을 캡처하고, Elastic에서 검색 쿼리를 실행하고, 응답을 사용하여 미리 정의된 프롬프트에 변수를 채워 GenAI 모델에 전송되도록 합니다.
 
 ```bash
 # Generate and display response on form submission
 negResponse = "I'm unable to answer the question based on the information I have from Homecraft dataset."
 if submit_button:
+    queryForElastic = ''
+    answerVision = ''
+    if uploaded_file is not None:
+        visionQuery = 'What is in the picture?'
+        answerVision = generateVisionResponse(visionQuery,uploaded_file)
+        #To Elastic, for semantic search, we send both the question and the first answer from the vision model
+        queryForElastic = query + answerVision 
+        st.write(f"**Vision assistant answer:**  \n\n{answerVision.strip()}")
+    
     es = es_connect(cid, cu, cp)
-    resp_products, url_products = search_products(query)
-    resp_docs, url_docs = search_docs(query)
+    resp_products, url_products = search_products(query if queryForElastic == '' else queryForElastic)
+    resp_docs, url_docs = search_docs(query if queryForElastic == '' else queryForElastic)
     resp_order_items = search_orders(1) # 1 is the hardcoded userid, to simplify this scenario. You should take user_id by user session
-    prompt = f"Answer this question: {query}.\n If product information is requested use the information provided in this JSON: {resp_products} listing the identified products in bullet points with this format: Product name, product key features, price, web url. \n For other questions use the documentation provided in these docs: {resp_docs} and your own knowledge. \n If the question contains requests for user past orders consider the following order list: {resp_order_items}"
-    answer = vertexAI(prompt)
+    #prompt = f"You are an e-commerce AI assistant. Answer this question: {query} using this context: \n{resp_products} \n {resp_docs} \n {resp_order_items}."
+    #prompt = f"You are an e-commerce AI assistant. Answer this question: {query}.\n If product information is requested use the information provided in this JSON: {resp_products} listing the identified products in bullet points with this format: Product name, product key features, price, web url. \n For other questions use the documentation provided in these docs: {resp_docs} and your own knowledge. \n If the question contains requests for user past orders consider the following order list: {resp_order_items}"
+    prompt = [f"You are an e-commerce AI assistant.", f"You answer question around product catalog, general company information and user past orders", f"Answer this question: {query}.", f"Context: Picture content = {answerVision}; Product catalog = {resp_products}; General information = {resp_docs}; Past orders = {resp_order_items} "]
+    #prompt = f"You are an e-commerce customer AI assistant. Answer this question: {query}.\n with your own knowledge and using the information provided in the context. Context: JSON product catalog: {resp_products} \n, these docs: \n {resp_docs} \n and this user order history: \n {resp_order_items}"
+    #answer = vertexAI(chat, prompt)
+    answer = generateResponse(prompt)
 
     if answer.strip() == '':
-        st.write(f"Search Assistant: \n\n{answer.strip()}")
+        st.write(f"**Elastic-powered Assistant:** \n\n{answer.strip()}")
     else:
-        st.write(f"Search Assistant: \n\n{answer.strip()}\n\n")
+        st.write(f"**Elastic-powered Assistant:** \n\n{answer.strip()}\n\n")
+        #st.write(f"Order items: {resp_order_items}")
 ```
 
 ## Sample questions
 
----USE THE HOME PAGE FOR BASE DEMO---
+### Following questions are for text only Gemini
 
-Try queries like: 
+하기 질문으로 테스트 해보세요: 
 
 - "List the 3 top paint primers in the product catalog, specify also the sales price for each product and product key features. Then explain in bullet points how to use a paint primer".
 You can also try asking for related urls and availability --> leveraging private product catalog + public knowledge
@@ -355,13 +374,14 @@ You can also try asking for related urls and availability --> leveraging private
 - are you offering a free parcel delivery? --> it will likely use crawled docs
 
 - Could you please list my past orders? Please specify price for each product --> it will search into BigQuery order dataset
+  
+- After uploading the image (find some in the samples/images folder) try queries like this one:
 
 - List all the items I have bought in my order history in bullet points
 
 
----FOR A DEMO OF FINE-TUNED MODEL USE "HOMECRAFT FINETUNED" WEBPAGE---
+### Following questions are for multimodal Gemini
 
-Try "Anyone available at Homecraft to assist with painting my house?".
-Asking this question in the fine-tuned page should suggest to go with Homecraft's network of professionals
+After uploading the image (find some in the samples/images folder) try queries like this one:
 
-Asking the same to the base model will likely provide a generic or "unable to help" answer.
+- What's in the image? Do you have similar products in your catalog? If yes list them with descriptions and prices
